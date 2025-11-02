@@ -57,6 +57,19 @@ public class Config {
         config.addProperty("birthdayCongratsChannelId", "");
         config.addProperty("birthdayListChannelId", "");
 
+        // channel counters defaults
+        JsonObject channelCounts = new JsonObject();
+        channelCounts.addProperty("enabled", false);
+        channelCounts.addProperty("onlineChannelId", "");
+        channelCounts.addProperty("memberChannelId", "");
+        channelCounts.addProperty("includeBots", false);
+        config.add("channelCounts", channelCounts);
+
+        // flag quiz defaults
+        JsonObject flagQuiz = new JsonObject();
+        flagQuiz.addProperty("enabled", true);
+        config.add("flagQuiz", flagQuiz);
+
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
@@ -237,6 +250,34 @@ public class Config {
             if (!hymn.has("channelId")) { hymn.addProperty("channelId", ""); changed = true; }
         }
 
+        // Channel counts defaults
+        if (!root.has("channelCounts") || root.get("channelCounts").isJsonNull()) {
+            JsonObject cc = new JsonObject();
+            cc.addProperty("enabled", false);
+            cc.addProperty("onlineChannelId", "");
+            cc.addProperty("memberChannelId", "");
+            cc.addProperty("includeBots", false);
+            root.add("channelCounts", cc);
+            changed = true;
+        } else {
+            JsonObject cc = root.getAsJsonObject("channelCounts");
+            if (!cc.has("enabled")) { cc.addProperty("enabled", false); changed = true; }
+            if (!cc.has("onlineChannelId")) { cc.addProperty("onlineChannelId", ""); changed = true; }
+            if (!cc.has("memberChannelId")) { cc.addProperty("memberChannelId", ""); changed = true; }
+            if (!cc.has("includeBots")) { cc.addProperty("includeBots", false); changed = true; }
+        }
+
+        // FlagQuiz defaults
+        if (!root.has("flagQuiz") || root.get("flagQuiz").isJsonNull()) {
+            JsonObject fq = new JsonObject();
+            fq.addProperty("enabled", true);
+            root.add("flagQuiz", fq);
+            changed = true;
+        } else {
+            JsonObject fq = root.getAsJsonObject("flagQuiz");
+            if (!fq.has("enabled")) { fq.addProperty("enabled", true); changed = true; }
+        }
+
         if (!root.has("database") || root.get("database").isJsonNull()) {
             JsonObject db = new JsonObject();
             db.addProperty("host", "localhost");
@@ -397,5 +438,37 @@ public class Config {
 
     public static String getDbPassword() {
         return root.getAsJsonObject("database").get("password").getAsString();
+    }
+
+    // Channel Counts getters
+    public static boolean getChannelCountsEnabled() {
+        if (!root.has("channelCounts")) return false;
+        JsonObject cc = root.getAsJsonObject("channelCounts");
+        return cc.has("enabled") && cc.get("enabled").getAsBoolean();
+    }
+
+    public static String getChannelCountsOnlineChannelId() {
+        if (!root.has("channelCounts")) return "";
+        JsonObject cc = root.getAsJsonObject("channelCounts");
+        return cc.has("onlineChannelId") ? cc.get("onlineChannelId").getAsString() : "";
+    }
+
+    public static String getChannelCountsMemberChannelId() {
+        if (!root.has("channelCounts")) return "";
+        JsonObject cc = root.getAsJsonObject("channelCounts");
+        return cc.has("memberChannelId") ? cc.get("memberChannelId").getAsString() : "";
+    }
+
+    public static boolean getChannelCountsIncludeBots() {
+        if (!root.has("channelCounts")) return false;
+        JsonObject cc = root.getAsJsonObject("channelCounts");
+        return cc.has("includeBots") && cc.get("includeBots").getAsBoolean();
+    }
+
+    // FlagQuiz getters
+    public static boolean getFlagQuizEnabled() {
+        if (!root.has("flagQuiz")) return true;
+        JsonObject fq = root.getAsJsonObject("flagQuiz");
+        return fq.has("enabled") && fq.get("enabled").getAsBoolean();
     }
 }

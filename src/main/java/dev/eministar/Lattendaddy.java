@@ -9,6 +9,9 @@ import dev.eministar.modules.welcome.WelcomeListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.ChunkingFilter;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +36,21 @@ public class Lattendaddy {
         }
 
         try {
+            // FlagQuiz Persistenz laden
+            dev.eministar.modules.flags.FlagQuizService.load();
+
             JDABuilder builder = JDABuilder.createDefault(token);
-            builder.enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_VOICE_STATES);
+            builder.enableIntents(
+                    GatewayIntent.GUILD_MESSAGES,
+                    GatewayIntent.MESSAGE_CONTENT,
+                    GatewayIntent.GUILD_MEMBERS,
+                    GatewayIntent.GUILD_VOICE_STATES,
+                    GatewayIntent.GUILD_PRESENCES
+            );
+            // WICHTIG: Präsenzdaten und vollständiges Member-Chaunking aktivieren, sonst bleibt Online-Count 0
+            builder.enableCache(CacheFlag.ONLINE_STATUS);
+            builder.setMemberCachePolicy(MemberCachePolicy.ALL);
+            builder.setChunkingFilter(ChunkingFilter.ALL);
 
             CommandManager manager = new CommandManager(Config.getPrefix());
 
@@ -60,10 +76,15 @@ public class Lattendaddy {
             dev.eministar.modules.hymn.HymnModule hymn = new dev.eministar.modules.hymn.HymnModule();
             dev.eministar.modules.counting.CountingListener counting = new dev.eministar.modules.counting.CountingListener();
             dev.eministar.modules.misc.PingReactionListener pingReaction = new dev.eministar.modules.misc.PingReactionListener();
-            builder.addEventListeners(manager, welcome, goodbye, birthday, ticket, suggestion, tempVoice, hymn, counting, pingReaction);
+            dev.eministar.modules.channelcounts.ChannelCountListener channelCounts = new dev.eministar.modules.channelcounts.ChannelCountListener();
+            dev.eministar.modules.flags.FlagQuizListener flagQuiz = new dev.eministar.modules.flags.FlagQuizListener();
+            builder.addEventListeners(manager, welcome, goodbye, birthday, ticket, suggestion, tempVoice, hymn, counting, pingReaction, channelCounts, flagQuiz);
 
             JDA jda = builder.build().awaitReady();
             manager.registerToJda(jda);
+
+            // FlagQuiz Dashboard sicherstellen
+            dev.eministar.modules.flags.FlagQuizService.bootstrapDashboards(jda);
 
             // Auto-start Hymn module if enabled
             if (Config.getHymnEnabled()) {

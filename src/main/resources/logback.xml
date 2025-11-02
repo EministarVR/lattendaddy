@@ -19,5 +19,6 @@
 
     <!-- Eigene Logs auf INFO -->
     <logger name="dev.eministar" level="INFO"/>
+    <!-- ChannelCounts Diagnose -->
+    <logger name="dev.eministar.modules.channelcounts" level="DEBUG"/>
 </configuration>
-
