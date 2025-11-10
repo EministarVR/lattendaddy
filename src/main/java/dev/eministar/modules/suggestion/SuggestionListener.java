@@ -3,10 +3,8 @@ package dev.eministar.modules.suggestion;
 import dev.eministar.config.Config;
 import dev.eministar.util.EmojiUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -17,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.Optional;
 
 public class SuggestionListener extends ListenerAdapter {
@@ -219,27 +216,41 @@ public class SuggestionListener extends ListenerAdapter {
         });
     }
 
+    private boolean isUpvote(net.dv8tion.jda.api.entities.emoji.EmojiUnion emojiUnion) {
+        return emojiUnion.getType() == net.dv8tion.jda.api.entities.emoji.Emoji.Type.UNICODE
+                && UPVOTE_EMOJI.equals(emojiUnion.asUnicode().getName());
+    }
+
+    private boolean isDownvote(net.dv8tion.jda.api.entities.emoji.EmojiUnion emojiUnion) {
+        return emojiUnion.getType() == net.dv8tion.jda.api.entities.emoji.Emoji.Type.UNICODE
+                && DOWNVOTE_EMOJI.equals(emojiUnion.asUnicode().getName());
+    }
+
     @Override
     public void onMessageReactionAdd(MessageReactionAddEvent event) {
         if (event.getUser() == null || event.getUser().isBot()) return;
         if (event.getGuild() == null) return;
 
-        String emoji = event.getReaction().getEmoji().asUnicode().getAsCodepoints();
+        var emoji = event.getReaction().getEmoji();
+        if (!isUpvote(emoji) && !isDownvote(emoji)) return;
 
-        if (!emoji.equals(UPVOTE_EMOJI) && !emoji.equals(DOWNVOTE_EMOJI)) return;
-
-        // Check if it's a suggestion message
         Optional<Suggestion> optSuggestion = SuggestionService.getSuggestionByMessage(
                 event.getGuild().getId(),
                 event.getMessageId()
         );
-
         if (optSuggestion.isEmpty()) return;
-
         Suggestion suggestion = optSuggestion.get();
 
-        // Count current reactions
+        // Nur eine Stimme pro User: entferne gegenteilige Reaktion, wenn vorhanden
         event.retrieveMessage().queue(message -> {
+            // Entferne evtl. gegenteilige Reaktion des Users
+            for (MessageReaction r : message.getReactions()) {
+                var re = r.getEmoji();
+                boolean opposite = (isUpvote(emoji) && isDownvote(re)) || (isDownvote(emoji) && isUpvote(re));
+                if (opposite) {
+                    r.removeReaction(event.getUser()).queue(null, err -> {});
+                }
+            }
             updateVoteCounts(message, suggestion);
         });
     }
@@ -249,24 +260,17 @@ public class SuggestionListener extends ListenerAdapter {
         if (event.getUser() == null || event.getUser().isBot()) return;
         if (event.getGuild() == null) return;
 
-        String emoji = event.getReaction().getEmoji().asUnicode().getAsCodepoints();
+        var emoji = event.getReaction().getEmoji();
+        if (!isUpvote(emoji) && !isDownvote(emoji)) return;
 
-        if (!emoji.equals(UPVOTE_EMOJI) && !emoji.equals(DOWNVOTE_EMOJI)) return;
-
-        // Check if it's a suggestion message
         Optional<Suggestion> optSuggestion = SuggestionService.getSuggestionByMessage(
                 event.getGuild().getId(),
                 event.getMessageId()
         );
-
         if (optSuggestion.isEmpty()) return;
-
         Suggestion suggestion = optSuggestion.get();
 
-        // Count current reactions
-        event.retrieveMessage().queue(message -> {
-            updateVoteCounts(message, suggestion);
-        });
+        event.retrieveMessage().queue(message -> updateVoteCounts(message, suggestion));
     }
 
     private void updateVoteCounts(Message message, Suggestion suggestion) {
@@ -274,22 +278,24 @@ public class SuggestionListener extends ListenerAdapter {
         int downvotes = 0;
 
         for (MessageReaction reaction : message.getReactions()) {
-            String emoji = reaction.getEmoji().asUnicode().getAsCodepoints();
-            int count = reaction.getCount() - 1; // Subtract bot's reaction
+            var emoji = reaction.getEmoji();
+            int count = reaction.getCount();
+            // ziehe die Bot-eigene Reaktion ab (falls vorhanden)
+            if (message.getJDA().getSelfUser() != null && reaction.isSelf()) {
+                count = Math.max(0, count - 1);
+            }
 
-            if (emoji.equals(UPVOTE_EMOJI)) {
+            if (isUpvote(emoji)) {
                 upvotes = Math.max(0, count);
-            } else if (emoji.equals(DOWNVOTE_EMOJI)) {
+            } else if (isDownvote(emoji)) {
                 downvotes = Math.max(0, count);
             }
         }
 
-        // Update suggestion
         suggestion.setUpvotes(upvotes);
         suggestion.setDownvotes(downvotes);
         SuggestionService.updateSuggestion(suggestion);
 
-        // Update embed
         User author = message.getJDA().getUserById(suggestion.getUserId());
         if (author != null) {
             MessageEmbed newEmbed = createSuggestionEmbed(suggestion, author).build();
@@ -313,4 +319,3 @@ public class SuggestionListener extends ListenerAdapter {
         }, error -> logger.error("Failed to update suggestion message", error));
     }
 }
-

@@ -38,6 +38,8 @@ public class Lattendaddy {
         try {
             // FlagQuiz Persistenz laden
             dev.eministar.modules.flags.FlagQuizService.load();
+            // DPQ Zustand laden (laufende Nummer etc.)
+            dev.eministar.modules.dpq.DpqService.loadState();
 
             JDABuilder builder = JDABuilder.createDefault(token);
             builder.enableIntents(
@@ -78,7 +80,8 @@ public class Lattendaddy {
             dev.eministar.modules.misc.PingReactionListener pingReaction = new dev.eministar.modules.misc.PingReactionListener();
             dev.eministar.modules.channelcounts.ChannelCountListener channelCounts = new dev.eministar.modules.channelcounts.ChannelCountListener();
             dev.eministar.modules.flags.FlagQuizListener flagQuiz = new dev.eministar.modules.flags.FlagQuizListener();
-            builder.addEventListeners(manager, welcome, goodbye, birthday, ticket, suggestion, tempVoice, hymn, counting, pingReaction, channelCounts, flagQuiz);
+            dev.eministar.modules.dpq.DpqAnswerListener dpqAnswer = new dev.eministar.modules.dpq.DpqAnswerListener();
+            builder.addEventListeners(manager, welcome, goodbye, birthday, ticket, suggestion, tempVoice, hymn, counting, pingReaction, channelCounts, flagQuiz, dpqAnswer);
 
             JDA jda = builder.build().awaitReady();
             manager.registerToJda(jda);

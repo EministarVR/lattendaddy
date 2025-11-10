@@ -57,6 +57,8 @@ public class FlagQuizService {
     // ISO-Länderliste (alpha-2)
     private static final List<String> ISO_CODES = List.of(Locale.getISOCountries());
 
+    private static final Map<String, Long> lastDashboardUpdate = new ConcurrentHashMap<>();
+
     public enum Mode { NORMAL, EASY, DAILY }
 
     public record ActiveRound(String guildId,
@@ -176,6 +178,12 @@ public class FlagQuizService {
     }
 
     public static void tryEnsureDashboardMessage(String guildId, TextChannel channel) {
+        long now = System.currentTimeMillis();
+        long last = lastDashboardUpdate.getOrDefault(guildId, 0L);
+        if (now - last < 5000) {
+            return; // Throttle Updates auf max. alle 5s
+        }
+        lastDashboardUpdate.put(guildId, now);
         Long mid = getDashboardMessageId(guildId);
         if (mid != null) {
             channel.retrieveMessageById(mid).queue(
@@ -351,11 +359,7 @@ public class FlagQuizService {
         }
 
         long start = System.currentTimeMillis();
-        long[] midHolder = new long[1];
-        var ra = action.submit().thenAccept(msg -> {
-            midHolder[0] = msg.getIdLong();
-            msg.delete().queueAfter(TIME_LIMIT_SECONDS, TimeUnit.SECONDS, s -> {}, f -> {});
-        });
+        action.queue(msg -> msg.delete().queueAfter(TIME_LIMIT_SECONDS, TimeUnit.SECONDS, s -> {}, f -> {}));
 
         // Timeout task -> muss gezielt die Runde dieses Users schließen
         ScheduledFuture<?> future = scheduler.schedule(() -> endRoundTimeout(guildId, channelId, targetUserId, channel, code), TIME_LIMIT_SECONDS, TimeUnit.SECONDS);
@@ -596,9 +600,9 @@ public class FlagQuizService {
     }
 
     private static String flagImageUrl(String iso2) {
-        // Verlässlich: flagcdn.com, ISO2 lower-case, z. B. https://flagcdn.com/w512/de.png
+        // Verlässlich: flagcdn.com, ISO2 lower-case, größere Auflösung
         String c = iso2.toLowerCase(java.util.Locale.ROOT);
-        return "https://flagcdn.com/w512/" + c + ".png";
+        return "https://flagcdn.com/w1024/" + c + ".png";
     }
 
     private static Map<String, String> buildAliasMap() {
@@ -717,5 +721,30 @@ public class FlagQuizService {
         }
         if (sb.isEmpty()) sb.append("Noch keine Einträge.");
         return sb.toString();
+    }
+
+    public static PlayerStats getPlayerStatsPublic(String guildId, String userId) {
+        return stats(guildId, userId);
+    }
+
+    public static FlagStats getFlagStatsPublic(String guildId, String code) {
+        return flagStats(guildId, code);
+    }
+
+    public static Optional<String> resolveToCode(String userInput) {
+        String norm = normalize(userInput);
+        if (norm.length() == 2) {
+            String up = norm.toUpperCase(Locale.ROOT);
+            if (ISO_CODES.contains(up)) return Optional.of(up);
+        }
+        // Alias direkt
+        if (ALIAS_TO_CODE.containsKey(norm)) return Optional.of(ALIAS_TO_CODE.get(norm));
+        // Namen de/en durchgehen
+        for (String iso : ISO_CODES) {
+            String de = normalize(countryName(iso, Locale.GERMAN));
+            String en = normalize(countryName(iso, Locale.ENGLISH));
+            if (norm.equals(de) || norm.equals(en)) return Optional.of(iso);
+        }
+        return Optional.empty();
     }
 }

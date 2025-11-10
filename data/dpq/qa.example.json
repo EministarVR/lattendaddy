@@ -1,0 +1,8 @@
+[
+  { "id": 1, "question": "Wer ist Friedrich Merz?", "solution": "Friedrich Merz ist ein deutscher Politiker (CDU), seit 2022 Bundesvorsitzender seiner Partei ..." },
+  { "id": 2, "question": "Welche Aufgaben hat der Bundesrat?", "solution": "Der Bundesrat vertritt die Länder, wirkt an Gesetzgebung und Verwaltung mit und entscheidet bei zustimmungspflichtigen Gesetzen mit." },
+  { "id": 3, "question": "Wie entsteht ein Gesetz im Bundestag?", "solution": "Entwurf – Ausschussberatung – 3 Lesungen – Bundesrat – Ausfertigung – Verkündung." },
+  { "id": 4, "question": "Was bedeutet Föderalismus?", "solution": "Verteilung staatlicher Aufgaben auf Bund und Länder mit eigener Gesetzgebungskompetenz." },
+  { "id": 5, "question": "Was macht das Bundesverfassungsgericht?", "solution": "Es prüft die Vereinbarkeit von Gesetzen und staatlichem Handeln mit dem Grundgesetz." }
+]
+

@@ -53,6 +53,13 @@
             <version>${logback.version}</version>
         </dependency>
 
+        <!-- Logback Core (explicit) -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+
         <!-- Gson for JSON -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -157,4 +164,3 @@
         </plugins>
     </build>
 </project>
-

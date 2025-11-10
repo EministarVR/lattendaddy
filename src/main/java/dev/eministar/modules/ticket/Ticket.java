@@ -1,6 +1,8 @@
 package dev.eministar.modules.ticket;
 
 import com.google.gson.annotations.SerializedName;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Ticket {
     @SerializedName("ticketId")
@@ -33,6 +35,12 @@ public class Ticket {
     @SerializedName("status")
     private TicketStatus status;
 
+    @SerializedName("priority")
+    private TicketPriority priority = TicketPriority.NORMAL;
+
+    @SerializedName("notes")
+    private List<TicketNote> notes = new ArrayList<>();
+
     public Ticket(String ticketId, String userId, String guildId, TicketCategory category) {
         this.ticketId = ticketId;
         this.userId = userId;
@@ -58,9 +66,36 @@ public class Ticket {
     public void setClosedAt(long closedAt) { this.closedAt = closedAt; }
     public TicketStatus getStatus() { return status; }
     public void setStatus(TicketStatus status) { this.status = status; }
+    public TicketPriority getPriority() { return priority; }
+    public void setPriority(TicketPriority priority) { this.priority = priority; }
+    public List<TicketNote> getNotes() { return notes; }
+    public void addNote(TicketNote note) { this.notes.add(note); }
 
     public enum TicketStatus {
         OPEN, CLAIMED, CLOSED
     }
-}
+    public enum TicketPriority {
+        LOW, NORMAL, HIGH
+    }
 
+    public static class TicketNote {
+        @SerializedName("authorId")
+        private final String authorId;
+
+        @SerializedName("content")
+        private final String content;
+
+        @SerializedName("timestamp")
+        private final long timestamp;
+
+        public TicketNote(String authorId, String content) {
+            this.authorId = authorId;
+            this.content = content;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public String getAuthorId() { return authorId; }
+        public String getContent() { return content; }
+        public long getTimestamp() { return timestamp; }
+    }
+}

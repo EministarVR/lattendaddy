@@ -77,6 +77,13 @@ public class Config {
         config.add("joinRoleIds", new JsonArray());
         config.add("ticketClaimRoleIds", new JsonArray());
 
+        // DPQ defaults
+        config.addProperty("dpqChannelId", "");
+        config.addProperty("dpqCategoryId", "");
+        config.addProperty("dpqPingRoleId", "");
+        config.addProperty("dpqTeamRoleId", "");
+        config.addProperty("dpqQaUrl", "");
+
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer w = Files.newBufferedWriter(CONFIG_PATH, StandardCharsets.UTF_8)) {
@@ -289,6 +296,13 @@ public class Config {
         if (!root.has("joinRoleIds")) { root.add("joinRoleIds", new JsonArray()); changed = true; }
         if (!root.has("ticketClaimRoleIds")) { root.add("ticketClaimRoleIds", new JsonArray()); changed = true; }
 
+        // DPQ defaults
+        if (!root.has("dpqChannelId")) { root.addProperty("dpqChannelId", ""); changed = true; }
+        if (!root.has("dpqCategoryId")) { root.addProperty("dpqCategoryId", ""); changed = true; }
+        if (!root.has("dpqPingRoleId")) { root.addProperty("dpqPingRoleId", ""); changed = true; }
+        if (!root.has("dpqTeamRoleId")) { root.addProperty("dpqTeamRoleId", ""); changed = true; }
+        if (!root.has("dpqQaUrl")) { root.addProperty("dpqQaUrl", ""); changed = true; }
+
         if (!root.has("database") || root.get("database").isJsonNull()) {
             JsonObject db = new JsonObject();
             db.addProperty("host", "localhost");
@@ -499,4 +513,11 @@ public class Config {
         }
         return out;
     }
+
+    // DPQ getters
+    public static String getDpqChannelId() { return root.has("dpqChannelId") ? root.get("dpqChannelId").getAsString() : ""; }
+    public static String getDpqCategoryId() { return root.has("dpqCategoryId") ? root.get("dpqCategoryId").getAsString() : ""; }
+    public static String getDpqPingRoleId() { return root.has("dpqPingRoleId") ? root.get("dpqPingRoleId").getAsString() : ""; }
+    public static String getDpqTeamRoleId() { return root.has("dpqTeamRoleId") ? root.get("dpqTeamRoleId").getAsString() : ""; }
+    public static String getDpqQaUrl() { return root.has("dpqQaUrl") ? root.get("dpqQaUrl").getAsString() : ""; }
 }

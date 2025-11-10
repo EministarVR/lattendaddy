@@ -95,6 +95,26 @@ public class TicketListener extends ListenerAdapter {
 
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
+        // Notiz-Modal zuerst behandeln
+        if (event.getModalId().startsWith("ticket:addnote:")) {
+            if (event.getGuild() == null) return;
+            String ticketId = event.getModalId().split(":")[2];
+            Ticket ticket = TicketService.getTicket(event.getGuild().getId(), ticketId).orElse(null);
+            if (ticket == null) {
+                event.reply(EmojiUtil.wrap("❌") + " Ticket nicht gefunden!").setEphemeral(true).queue();
+                return;
+            }
+            var noteValue = event.getValue("note");
+            if (noteValue == null) {
+                event.reply(EmojiUtil.wrap("❌") + " Keine Notiz enthalten!").setEphemeral(true).queue();
+                return;
+            }
+            ticket.addNote(new Ticket.TicketNote(event.getUser().getId(), noteValue.getAsString()));
+            TicketService.updateTicket(ticket);
+            event.reply(EmojiUtil.wrap("✅") + " Notiz hinzugefügt.").setEphemeral(true).queue();
+            return;
+        }
+
         if (!event.getModalId().startsWith("ticket:reason:")) return;
         if (event.getGuild() == null) return;
 
@@ -189,6 +209,8 @@ public class TicketListener extends ListenerAdapter {
         List<Button> buttons = new ArrayList<>();
         buttons.add(Button.success("ticket:claim:" + ticket.getTicketId(), EmojiUtil.wrap("✋") + " Claim"));
         buttons.add(Button.danger("ticket:close:" + ticket.getTicketId(), EmojiUtil.wrap("🔒") + " Close"));
+        buttons.add(Button.primary("ticket:note:" + ticket.getTicketId(), EmojiUtil.wrap("📝") + " Notiz"));
+        buttons.add(Button.secondary("ticket:prio:" + ticket.getTicketId(), EmojiUtil.wrap("⚙️") + " Prio"));
 
         if (ticket.getCategory() == TicketCategory.BEWERBUNG) {
             buttons.add(Button.primary("ticket:accept:" + ticket.getTicketId(), EmojiUtil.wrap("✅") + " Akzeptieren"));
@@ -272,6 +294,10 @@ public class TicketListener extends ListenerAdapter {
             handleAccept(event);
         } else if (componentId.startsWith("ticket:reject:")) {
             handleReject(event);
+        } else if (componentId.startsWith("ticket:note:")) {
+            handleAddNote(event);
+        } else if (componentId.startsWith("ticket:prio:")) {
+            handleTogglePriority(event);
         }
     }
 
@@ -282,6 +308,43 @@ public class TicketListener extends ListenerAdapter {
             if (allowed.contains(role.getId())) return true;
         }
         return false;
+    }
+
+    private void handleAddNote(ButtonInteractionEvent event) {
+        if (event.getGuild() == null) return;
+        String ticketId = event.getComponentId().split(":")[2];
+        Ticket ticket = TicketService.getTicket(event.getGuild().getId(), ticketId).orElse(null);
+        if (ticket == null) {
+            event.reply(EmojiUtil.wrap("❌") + " Ticket nicht gefunden!").setEphemeral(true).queue();
+            return;
+        }
+        TextInput input = TextInput.create("note", "Notiz", TextInputStyle.PARAGRAPH)
+                .setPlaceholder("Interne Notiz hinzufügen...")
+                .setRequired(true)
+                .setMaxLength(300)
+                .build();
+        Modal modal = Modal.create("ticket:addnote:" + ticketId, "Notiz für " + ticket.getTicketId())
+                .addActionRow(input)
+                .build();
+        event.replyModal(modal).queue();
+    }
+
+    private void handleTogglePriority(ButtonInteractionEvent event) {
+        if (event.getGuild() == null) return;
+        String ticketId = event.getComponentId().split(":")[2];
+        Ticket ticket = TicketService.getTicket(event.getGuild().getId(), ticketId).orElse(null);
+        if (ticket == null) {
+            event.reply(EmojiUtil.wrap("❌") + " Ticket nicht gefunden!").setEphemeral(true).queue();
+            return;
+        }
+        Ticket.TicketPriority next = switch (ticket.getPriority()) {
+            case LOW -> Ticket.TicketPriority.NORMAL;
+            case NORMAL -> Ticket.TicketPriority.HIGH;
+            case HIGH -> Ticket.TicketPriority.LOW;
+        };
+        ticket.setPriority(next);
+        TicketService.updateTicket(ticket);
+        event.reply(EmojiUtil.wrap("⚙️") + " Priorität ist jetzt **" + next.name() + "**").setEphemeral(true).queue();
     }
 
     private void handleClaim(ButtonInteractionEvent event) {
@@ -361,6 +424,31 @@ public class TicketListener extends ListenerAdapter {
                 try {
                     Thread.sleep(5000);
                     logTicketClose(event.getGuild(), event.getUser(), ticket);
+
+                    // Transcript als einfache Zusammenfassung in den Log-Kanal
+                    String logChannelId = Config.getTicketLogChannelId();
+                    if (logChannelId != null && !logChannelId.isEmpty()) {
+                        TextChannel logChannel = event.getGuild().getTextChannelById(logChannelId);
+                        if (logChannel != null) {
+                            StringBuilder transcript = new StringBuilder();
+                            transcript.append("Ticket-ID: ").append(ticket.getTicketId()).append("\n");
+                            transcript.append("User: ").append(ticket.getUserId()).append("\n");
+                            transcript.append("Kategorie: ").append(ticket.getCategory().name()).append("\n");
+                            transcript.append("Grund: ").append(ticket.getReason()).append("\n");
+                            transcript.append("Priorität: ").append(ticket.getPriority()).append("\n");
+                            if (!ticket.getNotes().isEmpty()) {
+                                transcript.append("Notizen:\n");
+                                for (Ticket.TicketNote note : ticket.getNotes()) {
+                                    transcript.append(" - [").append(note.getTimestamp()).append("] ")
+                                            .append(note.getAuthorId()).append(": ")
+                                            .append(note.getContent()).append("\n");
+                                }
+                            }
+                            logChannel.sendMessage(EmojiUtil.wrap("📄") + " Transcript von " + ticket.getTicketId() + "\n```\n" + transcript + "```")
+                                    .queue();
+                        }
+                    }
+
                     event.getChannel().asTextChannel().delete().queue();
                 } catch (Exception e) {
                     logger.error("Error closing ticket channel", e);
