@@ -16,12 +16,12 @@ public class PingReactionListener extends ListenerAdapter {
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if (event.getAuthor().isBot()) return;
 
-        // Prüfe ob der Bot erwähnt wurde
-        if (event.getMessage().getMentions().isMentioned(event.getJDA().getSelfUser())) {
-            // Reagiere mit Custom Emoji
+        // Verhindere Reaktion auf @everyone / @here oder globale Mentions nur wenn direkt der Bot erwähnt ist
+        if (event.getMessage().getMentions().isMentioned(event.getJDA().getSelfUser())
+                && !event.getMessage().getMentions().mentionsEveryone()) {
             try {
                 event.getMessage().addReaction(Emoji.fromCustom(CUSTOM_EMOJI_NAME, Long.parseLong(CUSTOM_EMOJI_ID), false)).queue(
-                        success -> logger.debug("Reacted to ping with custom emoji"),
+                        success -> logger.debug("Reacted to direct bot ping with custom emoji"),
                         error -> logger.error("Failed to react with custom emoji", error)
                 );
             } catch (Exception e) {
@@ -30,4 +30,3 @@ public class PingReactionListener extends ListenerAdapter {
         }
     }
 }
-

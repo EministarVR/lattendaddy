@@ -2,6 +2,7 @@ package dev.eministar.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.io.*;
@@ -9,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class Config {
@@ -69,6 +72,10 @@ public class Config {
         JsonObject flagQuiz = new JsonObject();
         flagQuiz.addProperty("enabled", true);
         config.add("flagQuiz", flagQuiz);
+
+        // defaults for roles arrays
+        config.add("joinRoleIds", new JsonArray());
+        config.add("ticketClaimRoleIds", new JsonArray());
 
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
@@ -278,6 +285,10 @@ public class Config {
             if (!fq.has("enabled")) { fq.addProperty("enabled", true); changed = true; }
         }
 
+        // Roles arrays defaults
+        if (!root.has("joinRoleIds")) { root.add("joinRoleIds", new JsonArray()); changed = true; }
+        if (!root.has("ticketClaimRoleIds")) { root.add("ticketClaimRoleIds", new JsonArray()); changed = true; }
+
         if (!root.has("database") || root.get("database").isJsonNull()) {
             JsonObject db = new JsonObject();
             db.addProperty("host", "localhost");
@@ -470,5 +481,22 @@ public class Config {
         if (!root.has("flagQuiz")) return true;
         JsonObject fq = root.getAsJsonObject("flagQuiz");
         return fq.has("enabled") && fq.get("enabled").getAsBoolean();
+    }
+
+    // Roles getters
+    public static List<String> getJoinRoleIds() {
+        List<String> out = new ArrayList<>();
+        if (root.has("joinRoleIds") && root.get("joinRoleIds").isJsonArray()) {
+            root.getAsJsonArray("joinRoleIds").forEach(e -> out.add(e.getAsString()));
+        }
+        return out;
+    }
+
+    public static List<String> getTicketClaimRoleIds() {
+        List<String> out = new ArrayList<>();
+        if (root.has("ticketClaimRoleIds") && root.get("ticketClaimRoleIds").isJsonArray()) {
+            root.getAsJsonArray("ticketClaimRoleIds").forEach(e -> out.add(e.getAsString()));
+        }
+        return out;
     }
 }

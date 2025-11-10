@@ -93,6 +93,7 @@ public class HymnModule extends ListenerAdapter {
         // Erstelle Audio Player
         audioPlayer = playerManager.createPlayer();
         trackScheduler = new TrackScheduler(audioPlayer, hymns);
+        trackScheduler.setNextLoader(this::playNextTrack); // Automatisch weiter
         audioPlayer.addListener(trackScheduler);
 
         // Verbinde zum Voice Channel
@@ -241,4 +242,3 @@ public class HymnModule extends ListenerAdapter {
         return isPlaying;
     }
 }
-

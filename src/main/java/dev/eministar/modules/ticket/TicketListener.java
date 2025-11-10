@@ -275,8 +275,23 @@ public class TicketListener extends ListenerAdapter {
         }
     }
 
+    private boolean hasAnyClaimRole(Member member) {
+        List<String> allowed = Config.getTicketClaimRoleIds();
+        if (allowed.isEmpty()) return true; // Fallback: wenn nicht konfiguriert, alle erlauben
+        for (Role role : member.getRoles()) {
+            if (allowed.contains(role.getId())) return true;
+        }
+        return false;
+    }
+
     private void handleClaim(ButtonInteractionEvent event) {
         if (event.getGuild() == null || event.getMember() == null) return;
+
+        // Rollenprüfung
+        if (!hasAnyClaimRole(event.getMember())) {
+            event.reply(EmojiUtil.wrap("⛔") + " Du darfst keine Tickets claimen.").setEphemeral(true).queue();
+            return;
+        }
 
         String ticketId = event.getComponentId().replace("ticket:claim:", "");
         Ticket ticket = TicketService.getTicket(event.getGuild().getId(), ticketId).orElse(null);

@@ -7,10 +7,16 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
+import java.util.List;
 
 public class WelcomeListener extends ListenerAdapter {
+    private static final Logger logger = LoggerFactory.getLogger(WelcomeListener.class);
+
     @Override
     public void onGuildMemberJoin(GuildMemberJoinEvent event) {
         TextChannel channel = null;
@@ -26,9 +32,24 @@ public class WelcomeListener extends ListenerAdapter {
             if (defaultChannel instanceof TextChannel tc) channel = tc;
         }
 
+        Member member = event.getMember();
+
+        // Rolle(n) automatisch vergeben
+        List<String> joinRoles = Config.getJoinRoleIds();
+        if (!joinRoles.isEmpty()) {
+            for (String roleId : joinRoles) {
+                Role role = event.getGuild().getRoleById(roleId);
+                if (role != null) {
+                    event.getGuild().addRoleToMember(member, role).queue(
+                        s -> logger.debug("Assigned join role {} to member {}", role.getId(), member.getId()),
+                        e -> logger.warn("Could not assign join role {} to member {}", roleId, member.getId())
+                    );
+                }
+            }
+        }
+
         if (channel == null) return; // no channel to send to
 
-        Member member = event.getMember();
         String username = member.getEffectiveName();
         String avatarUrl = member.getUser().getAvatarUrl();
 
